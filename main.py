@@ -3,72 +3,63 @@ import json
 import pandas as pd
 from datetime import datetime
 
-# =========================
-# CONFIG
-# =========================
-API_KEY = "2YWjjlLEyufi1gjMcWRAVomEcccN94OhcySD9CUJo70DI9h6AC1YmawShmzHRQ18"
+API_KEY = "JTGRudfw7zoIvqlJjAm3OKq7mX0lAUk9hHYctgO327sdJ8F7GEUnbokvlCIjDh0U"
 
-# จุดตัวอย่าง (ใช้พื้นที่น้ำท่วมมีโอกาสมี data)
 points = [
     (13.7563, 100.5018),  # Bangkok
-    (13.7450, 100.5340),
     (14.0208, 100.5250),  # Pathum Thani
     (14.3470, 100.5689)   # Ayutthaya
 ]
 
+
 # =========================
-# CALL API
+# NEW API (Risk-based)
 # =========================
 def get_flood_risk(lat, lon):
-    url = (
-        "https://api-gateway.gistda.or.th/api/2.0/resources/gi-service/v1.0/"
-        f"disasters/flood-recurrence?lat={lat}&lon={lon}&api_key={API_KEY}"
-    )
 
-    res = requests.get(url, timeout=30)
+    url = "https://api-gateway.gistda.or.th/api/2.0/resources/gi-service/v1.0/disasters/flood-risk"
 
-    # 🔥 DEBUG สำคัญ
-    print("===================================")
-    print(f"LAT: {lat}, LON: {lon}")
+    params = {
+        "lat": lat,
+        "lon": lon,
+        "api_key": API_KEY
+    }
+
+    res = requests.get(url, params=params, timeout=30)
+
     print("STATUS:", res.status_code)
-    print("RAW RESPONSE:")
-    print(res.text)
-    print("===================================")
+    print("RAW:", res.text)
 
     if res.status_code != 200:
         return None
 
     try:
         return res.json()
-    except Exception as e:
-        print("JSON ERROR:", e)
+    except:
         return None
 
 
-# =========================
-# PROCESS DATA
-# =========================
 results = []
 
 for lat, lon in points:
     data = get_flood_risk(lat, lon)
 
     if not data:
-        print("NO DATA SKIP")
         continue
 
-    # 🔥 รองรับ JSON หลายรูปแบบ
-    if isinstance(data, dict):
-        risk_level = data.get("risk_level") or data.get("data", {}).get("risk_level")
-        risk_score = data.get("risk_score") or data.get("data", {}).get("risk_score")
-        flood_probability = data.get("flood_probability") or data.get("data", {}).get("flood_probability")
-        return_period = data.get("return_period") or data.get("data", {}).get("return_period")
-    else:
-        continue
+    # รองรับหลาย format
+    risk_level = (
+        data.get("risk_level")
+        or data.get("data", {}).get("risk_level")
+        or data.get("level")
+    )
 
-    # ❗ ถ้าไม่มี risk_level = ข้าม
+    risk_score = (
+        data.get("risk_score")
+        or data.get("data", {}).get("risk_score")
+    )
+
     if not risk_level:
-        print("NO RISK DATA FOUND")
         continue
 
     results.append({
@@ -76,26 +67,20 @@ for lat, lon in points:
         "lon": lon,
         "risk_level": risk_level,
         "risk_score": risk_score,
-        "flood_probability": flood_probability,
-        "return_period": return_period,
         "timestamp": datetime.now().isoformat()
     })
 
 
 # =========================
-# SAVE CSV
+# CSV
 # =========================
-df = pd.DataFrame(results)
-df.to_csv("flood_risk.csv", index=False)
+pd.DataFrame(results).to_csv("flood_risk.csv", index=False)
 
 
 # =========================
-# SAVE GEOJSON (ArcGIS READY)
+# GEOJSON
 # =========================
-geojson = {
-    "type": "FeatureCollection",
-    "features": []
-}
+geojson = {"type": "FeatureCollection", "features": []}
 
 for r in results:
     geojson["features"].append({
@@ -107,7 +92,7 @@ for r in results:
         "properties": r
     })
 
-with open("flood_risk.geojson", "w", encoding="utf-8") as f:
-    json.dump(geojson, f, indent=2, ensure_ascii=False)
+with open("flood_risk.geojson", "w") as f:
+    json.dump(geojson, f, indent=2)
 
-print("DONE ✔️ Results count:", len(results))
+print("DONE ✔️", len(results))
