@@ -6,15 +6,15 @@ from datetime import datetime
 # =========================
 # CONFIG
 # =========================
-API_KEY = "2YWjjlLEyufi1gjMcWRAVomEcccN94OhcySD9CUJo70DI9h6AC1YmawShmzHRQ18"
+API_KEY = "PUT_YOUR_API_KEY_HERE"
 
-# จุดตัวอย่าง (เปลี่ยนเป็นพื้นที่คุณได้)
+# จุดตัวอย่าง (ใช้พื้นที่น้ำท่วมมีโอกาสมี data)
 points = [
-    (14.1234, 101.5678),
-    (14.1100, 101.5200),
-    (14.2000, 101.6000)
+    (13.7563, 100.5018),  # Bangkok
+    (13.7450, 100.5340),
+    (14.0208, 100.5250),  # Pathum Thani
+    (14.3470, 100.5689)   # Ayutthaya
 ]
-
 
 # =========================
 # CALL API
@@ -27,11 +27,22 @@ def get_flood_risk(lat, lon):
 
     res = requests.get(url, timeout=30)
 
+    # 🔥 DEBUG สำคัญ
+    print("===================================")
+    print(f"LAT: {lat}, LON: {lon}")
+    print("STATUS:", res.status_code)
+    print("RAW RESPONSE:")
+    print(res.text)
+    print("===================================")
+
     if res.status_code != 200:
-        print("API Error:", res.status_code)
         return None
 
-    return res.json()
+    try:
+        return res.json()
+    except Exception as e:
+        print("JSON ERROR:", e)
+        return None
 
 
 # =========================
@@ -40,20 +51,35 @@ def get_flood_risk(lat, lon):
 results = []
 
 for lat, lon in points:
-    print(f"Processing {lat}, {lon}")
-
     data = get_flood_risk(lat, lon)
 
-    if data:
-        results.append({
-            "lat": lat,
-            "lon": lon,
-            "risk_level": data.get("risk_level"),
-            "risk_score": data.get("risk_score"),
-            "flood_probability": data.get("flood_probability"),
-            "return_period": data.get("return_period"),
-            "timestamp": datetime.now().isoformat()
-        })
+    if not data:
+        print("NO DATA SKIP")
+        continue
+
+    # 🔥 รองรับ JSON หลายรูปแบบ
+    if isinstance(data, dict):
+        risk_level = data.get("risk_level") or data.get("data", {}).get("risk_level")
+        risk_score = data.get("risk_score") or data.get("data", {}).get("risk_score")
+        flood_probability = data.get("flood_probability") or data.get("data", {}).get("flood_probability")
+        return_period = data.get("return_period") or data.get("data", {}).get("return_period")
+    else:
+        continue
+
+    # ❗ ถ้าไม่มี risk_level = ข้าม
+    if not risk_level:
+        print("NO RISK DATA FOUND")
+        continue
+
+    results.append({
+        "lat": lat,
+        "lon": lon,
+        "risk_level": risk_level,
+        "risk_score": risk_score,
+        "flood_probability": flood_probability,
+        "return_period": return_period,
+        "timestamp": datetime.now().isoformat()
+    })
 
 
 # =========================
@@ -64,7 +90,7 @@ df.to_csv("flood_risk.csv", index=False)
 
 
 # =========================
-# SAVE GEOJSON (ใช้ ArcGIS)
+# SAVE GEOJSON (ArcGIS READY)
 # =========================
 geojson = {
     "type": "FeatureCollection",
@@ -84,4 +110,4 @@ for r in results:
 with open("flood_risk.geojson", "w", encoding="utf-8") as f:
     json.dump(geojson, f, indent=2, ensure_ascii=False)
 
-print("DONE ✔️")
+print("DONE ✔️ Results count:", len(results))
