@@ -6,7 +6,7 @@ from datetime import datetime
 # =========================
 # CONFIG
 # =========================
-API_KEY = "PUT_YOUR_API_KEY_HERE"
+API_KEY = "2YWjjlLEyufi1gjMcWRAVomEcccN94OhcySD9CUJo70DI9h6AC1YmawShmzHRQ18"
 
 # จุดตัวอย่าง (ใช้พื้นที่น้ำท่วมมีโอกาสมี data)
 points = [
