@@ -6,7 +6,7 @@ from datetime import datetime
 # =========================
 # CONFIG
 # =========================
-API_KEY = "YOUR_API_KEY_HERE"
+API_KEY = "2YWjjlLEyufi1gjMcWRAVomEcccN94OhcySD9CUJo70DI9h6AC1YmawShmzHRQ18"
 
 # จุดตัวอย่าง (เปลี่ยนเป็นพื้นที่คุณได้)
 points = [
